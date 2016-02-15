@@ -70,6 +70,46 @@ top_content = fs.readFileSync("docroot/content.html", "utf8");
 
 var send = require('send');
 
+build = function(res, path, cb) {
+
+	var dirs = path.split("/");
+	I("dirs="+o2j(dirs));
+
+	path = "./docroot/"+path;
+	I("path="+path);
+
+	cb(null, "foo");
+	return;
+
+	fs.readFile(path+"/content.html", "utf8", function(err, body) {
+
+		if(err) {
+			r404(res);
+			return;
+		}
+
+		I("loaded body: "+body.substr(0, 40));
+
+		var html = top_content.replace( /{{content}}/, body );
+
+		try {
+			var article = require(path+"/content.json");
+			I("loaded content.json");
+			for(var k in article) {
+				var re = new RegExp( "{{"+k+"}}", "g" );
+				html = html.replace( re, article[k] );
+			}
+		}
+		catch(e) {
+		}
+
+		res.writeHead(200, {"ContentType": "text/html"});
+		res.write(html);
+		res.end();
+	});
+}
+
+
 
 GET = function(req, res, qry) {
 	try {
@@ -81,42 +121,16 @@ GET = function(req, res, qry) {
 			path = "home";
 		}
 
-		build(res, path, function(html) {
-			res.writeHead(200, {"ContentType": "text/html"});
-			res.write(html);
-			res.end();
-		});
-
-		path = "./docroot/"+path;
-		I("path="+path);
-
-		fs.readFile(path+"/content.html", "utf8", function(err, body) {
-
+		build(res, path, function(err, html) {
 			if(err) {
 				r404(res);
-				return;
 			}
-
-			I("loaded body: "+body.substr(0, 40));
-
-			var html = top_content.replace( /{{content}}/, body );
-
-			try {
-				var article = require(path+"/content.json");
-				I("loaded content.json");
-				for(var k in article) {
-					var re = new RegExp( "{{"+k+"}}", "g" );
-					html = html.replace( re, article[k] );
-				}
+			else {
+				res.writeHead(200, {"ContentType": "text/html"});
+				res.write(html);
+				res.end();
 			}
-			catch(e) {
-			}
-
-			res.writeHead(200, {"ContentType": "text/html"});
-			res.write(html);
-			res.end();
 		});
-
 	}
 	catch(e) {
 		r404(res, e.stack);

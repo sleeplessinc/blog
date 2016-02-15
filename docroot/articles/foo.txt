@@ -1,0 +1,7 @@
+title: Foo
+author: Joe Hitchens
+date: Fri Feb  5 15:30:27 PST 2016
+
+Foo is a fascinating topic!
+
+
