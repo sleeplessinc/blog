@@ -1,6 +1,4 @@
 
-
-
 // Copyright 2016  Sleepless Software Inc.  All Rights Reserved
 
 
@@ -33,6 +31,13 @@ r500 = function(res, s) {
 	res.end(s);
 }
 
+// finalize an HTTP transaction with a 404 'not found' response
+r404 = function(res, s) {
+	W("r404: "+s);
+	res.writeHead(404);
+	res.end("NOT FOUND");
+}
+
 
 // create the http daemon
 httpd = require('http').createServer(function(req, res) {
@@ -61,17 +66,55 @@ httpd.listen(port, function() {
 
 clients = {}; 	// holds client objects for those clients actively connected to this server
 seq_client = 0;
-shell = fs.readFileSync("docroot/shell.html"); 
+shell = fs.readFileSync("docroot/shell.html", "utf8"); 
 
 var send = require('send');
 
 
 GET = function(req, res, qry) {
-
-	var path = qry.pathname.replace( /(^\/+)|((\.)\.+)+/g, "" );
-	I("GET2: "+path);
-
 	try {
+		var path = qry.pathname;
+		throwIf(path.includes(".."), "naughty path: "+path);	// naughty path
+		path = path.substr(1);									// removes leading slash
+		path = path.replace( /\/+$/, "" ); 						// remove trailing slashes
+		if(path == "") {
+			path = "home";
+		}
+
+		path = "./docroot/"+path;
+		I("path="+path);
+
+		fs.readFile(path+"/content.html", "utf8", function(err, body) {
+
+			if(err) {
+				r404(res);
+				return;
+			}
+
+			I("loaded body: "+body.substr(0, 40));
+
+			var html = shell.replace( /{{content}}/, body );
+
+			try {
+				var article = require(path+"/content.json");
+				I("loaded content.json");
+				for(var k in article) {
+					var re = new RegExp( "{{"+k+"}}", "g" );
+					html = html.replace( re, article[k] );
+				}
+			}
+			catch(e) {
+				//W(e);
+				//r404(res);
+				//return;
+			}
+
+			res.writeHead(200, {"ContentType": "text/html"});
+			res.write(html);
+			res.end();
+		});
+
+		/*
 		var article = require("./docroot/"+path);
 		var html = ""+shell;
 		for(var k in article) {
@@ -82,9 +125,10 @@ GET = function(req, res, qry) {
 		res.write(html);
 		res.end();
 		return;
+		*/
 	}
 	catch(e) {
-		r500(res, "Not found: "+e);
+		r404(res, e.stack);
 		return;
 	}
 
@@ -100,10 +144,6 @@ GET = function(req, res, qry) {
 	}).pipe(res);
 	*/
 }
-
-
-
-
 
 
 
