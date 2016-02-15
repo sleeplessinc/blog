@@ -121,16 +121,58 @@ GET = function(req, res, qry) {
 			path = "home";
 		}
 
-		build(res, path, function(err, html) {
-			if(err) {
-				r404(res);
-			}
-			else {
-				res.writeHead(200, {"ContentType": "text/html"});
-				res.write(html);
-				res.end();
-			}
+
+		path = "docroot/"+path;
+		var dirs = path.split("/");
+		//I("dirs="+o2j(dirs));
+		var paths = [];
+		var p = ".";
+		dirs.forEach(function(dir, i) {
+			p += "/"+dir;
+			paths[i] = p;
 		});
+		//I("paths="+o2j(paths));
+		bodys = [];
+		var left = paths.length;
+		var meet = new Meet();
+		paths.forEach(function(path, i) {
+			meet.start(function(done) {
+				var p = path+"/content.html";
+				//I("loading body: "+p);
+				fs.readFile(p, "utf8", function(err, body) {
+					body = body || null;
+					if(body) {
+						I("body loaded from "+p);
+						bodys[i] = body;
+					}
+					done();
+				});
+			});
+		});
+		var html = "{{content}}"
+		meet.allDone(function() {
+			I("all done");
+			bodys.forEach(function(body, i) {
+				if(body) {
+					html = html.replace( /{{content}}/, body );
+				}
+			});
+			res.writeHead(200, {"ContentType": "text/html"});
+			res.write(html);
+			res.end();
+		});
+
+
+		//build(res, path, function(err, html) {
+		//	if(err) {
+		//		r404(res);
+		//	}
+		//	else {
+			//	res.writeHead(200, {"ContentType": "text/html"});
+			//	res.write(html);
+			//	res.end();
+		//	}
+		//});
 	}
 	catch(e) {
 		r404(res, e.stack);
