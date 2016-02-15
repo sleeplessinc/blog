@@ -70,114 +70,104 @@ top_content = fs.readFileSync("docroot/content.html", "utf8");
 
 var send = require('send');
 
-build = function(res, path, cb) {
 
+GET = function(req, res, qry) {
+
+	var path = qry.pathname;				// raw path from GET line
+	if(path.includes("..")) {
+		r404(res, "naughty path: "+path);	// naughty path
+		return;
+	}
+
+	path = path.substr(1);					// remove leading slash
+	path = path.replace( /\/+$/, "" ); 		// remove trailing slashes
+	if(path == "") {
+		path = "home";
+	}
+
+	path = "docroot/"+path;
 	var dirs = path.split("/");
-	I("dirs="+o2j(dirs));
+	//I("dirs="+o2j(dirs));
+	var paths = [];
+	var p = ".";
+	dirs.forEach(function(dir, i) {
+		p += "/"+dir;
+		paths[i] = p;
+	});
+	//I("paths="+o2j(paths));
+	bodys = [];
+	var left = paths.length;
+	var problems = false;
+	var meet = new Meet();
+	paths.forEach(function(path, i) {
+		meet.start(function(done) {
+			var p = path+"/content.html";
+			//I("reading "+p);
+			fs.readFile(p, "utf8", function(err, body) {
+				if(err) {
+					p = path+".txt";
+					//I("reading "+p);
+					fs.readFile(p, "utf8", function(err, text) {
+						if(err) {
+							problems = true;
+						}
+						else {
+							I("loaded "+text);
+							var lines = text.split( /\n/ );
+							var data = {};
+							for(var i = 0; i < lines.length; i++) {
+								var line = lines.shift().trim();
+								if(line == "") {
+									break;
+								}
+								var m = line.match( /^([-A-Za-z0-9]+): (.*)$/ );
+								if(!m) {
+									lines.unshift(line);
+									break;
+								}
+								data[m[1]] = m[2];
+							}
 
-	path = "./docroot/"+path;
-	I("path="+path);
-
-	cb(null, "foo");
-	return;
-
-	fs.readFile(path+"/content.html", "utf8", function(err, body) {
-
-		if(err) {
-			r404(res);
+							data["body"] = lines.join("\n");
+							bodys[i] = data;
+						}
+						done();
+					});
+				}
+				else {
+					body = body || null;
+					if(body) {
+						I("loaded "+p);
+						bodys[i] = body;
+					}
+					done();
+				}
+			});
+		});
+	});
+	var html = "{{content}}"
+	meet.allDone(function() {
+		//I("all done");
+		if(problems) {
+			r404(res, "no content found: "+path);
 			return;
 		}
-
-		I("loaded body: "+body.substr(0, 40));
-
-		var html = top_content.replace( /{{content}}/, body );
-
-		try {
-			var article = require(path+"/content.json");
-			I("loaded content.json");
-			for(var k in article) {
-				var re = new RegExp( "{{"+k+"}}", "g" );
-				html = html.replace( re, article[k] );
+		bodys.forEach(function(body, i) {
+			if(typeof body == "string") {
+				html = html.replace( /{{content}}/, body );
 			}
-		}
-		catch(e) {
-		}
-
+			else
+			if(typeof body == "object") {
+				for(var k in body) {
+					var re = new RegExp( "{{"+k+"}}", "g" );
+					html = html.replace( re, body[k] );
+				}
+			}
+		});
 		res.writeHead(200, {"ContentType": "text/html"});
 		res.write(html);
 		res.end();
 	});
-}
-
-
-
-GET = function(req, res, qry) {
-	try {
-		var path = qry.pathname;
-		throwIf(path.includes(".."), "naughty path: "+path);	// naughty path
-		path = path.substr(1);									// removes leading slash
-		path = path.replace( /\/+$/, "" ); 						// remove trailing slashes
-		if(path == "") {
-			path = "home";
-		}
-
-
-		path = "docroot/"+path;
-		var dirs = path.split("/");
-		//I("dirs="+o2j(dirs));
-		var paths = [];
-		var p = ".";
-		dirs.forEach(function(dir, i) {
-			p += "/"+dir;
-			paths[i] = p;
-		});
-		//I("paths="+o2j(paths));
-		bodys = [];
-		var left = paths.length;
-		var meet = new Meet();
-		paths.forEach(function(path, i) {
-			meet.start(function(done) {
-				var p = path+"/content.html";
-				//I("loading body: "+p);
-				fs.readFile(p, "utf8", function(err, body) {
-					body = body || null;
-					if(body) {
-						I("body loaded from "+p);
-						bodys[i] = body;
-					}
-					done();
-				});
-			});
-		});
-		var html = "{{content}}"
-		meet.allDone(function() {
-			I("all done");
-			bodys.forEach(function(body, i) {
-				if(body) {
-					html = html.replace( /{{content}}/, body );
-				}
-			});
-			res.writeHead(200, {"ContentType": "text/html"});
-			res.write(html);
-			res.end();
-		});
-
-
-		//build(res, path, function(err, html) {
-		//	if(err) {
-		//		r404(res);
-		//	}
-		//	else {
-			//	res.writeHead(200, {"ContentType": "text/html"});
-			//	res.write(html);
-			//	res.end();
-		//	}
-		//});
-	}
-	catch(e) {
-		r404(res, e.stack);
-		return;
-	}
 
 }
 
