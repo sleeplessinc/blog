@@ -1,3 +1,8 @@
 Title: Joe's Blog
 
 Welcome!
+
+<ul>
+	<li><a href="articles/foo">Foo - new info about foos</a>
+	<li><a href="articles/bar">Bar - about bars </a>
+</ul>
