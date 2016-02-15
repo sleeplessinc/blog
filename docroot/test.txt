@@ -1,1 +1,1 @@
-This is body content
+This is a test file.
