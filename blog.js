@@ -66,7 +66,7 @@ httpd.listen(port, function() {
 
 clients = {}; 	// holds client objects for those clients actively connected to this server
 seq_client = 0;
-shell = fs.readFileSync("docroot/shell.html", "utf8"); 
+top_content = fs.readFileSync("docroot/content.html", "utf8"); 
 
 var send = require('send');
 
@@ -81,6 +81,12 @@ GET = function(req, res, qry) {
 			path = "home";
 		}
 
+		build(res, path, function(html) {
+			res.writeHead(200, {"ContentType": "text/html"});
+			res.write(html);
+			res.end();
+		});
+
 		path = "./docroot/"+path;
 		I("path="+path);
 
@@ -93,7 +99,7 @@ GET = function(req, res, qry) {
 
 			I("loaded body: "+body.substr(0, 40));
 
-			var html = shell.replace( /{{content}}/, body );
+			var html = top_content.replace( /{{content}}/, body );
 
 			try {
 				var article = require(path+"/content.json");
@@ -104,9 +110,6 @@ GET = function(req, res, qry) {
 				}
 			}
 			catch(e) {
-				//W(e);
-				//r404(res);
-				//return;
 			}
 
 			res.writeHead(200, {"ContentType": "text/html"});
@@ -114,36 +117,18 @@ GET = function(req, res, qry) {
 			res.end();
 		});
 
-		/*
-		var article = require("./docroot/"+path);
-		var html = ""+shell;
-		for(var k in article) {
-			var re = new RegExp( "{{"+k+"}}", "g" );
-			html = html.replace( re, article[k] );
-		}
-		res.writeHead(200, {"ContentType": "text/html"});
-		res.write(html);
-		res.end();
-		return;
-		*/
 	}
 	catch(e) {
 		r404(res, e.stack);
 		return;
 	}
 
-	/*
-	fs.readFile(path, function(e, s) {
-		if(e) {
-		}
-
-	});
-
-	send(req, qry.pathname, {root: 'docroot'}).on("error", function(e) {
-		r500(res, "Not found: "+qry.pathname);
-	}).pipe(res);
-	*/
 }
 
 
 
+	/*
+	send(req, qry.pathname, {root: 'docroot'}).on("error", function(e) {
+		r500(res, "Not found: "+qry.pathname);
+	}).pipe(res);
+	*/
