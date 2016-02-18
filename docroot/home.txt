@@ -1,4 +1,5 @@
 Title: Joe's Blog
+Date: Wed Feb 17 21:04:24 PST 2016
 
 Welcome!
 
