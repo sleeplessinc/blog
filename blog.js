@@ -66,7 +66,7 @@ httpd.listen(port, function() {
 
 clients = {}; 	// holds client objects for those clients actively connected to this server
 seq_client = 0;
-top_content = fs.readFileSync("docroot/content.html", "utf8"); 
+//top_content = fs.readFileSync("docroot/content.html", "utf8"); 
 
 var send = require('send');
 
