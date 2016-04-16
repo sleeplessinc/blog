@@ -111,11 +111,12 @@ build3 = function(req, res, qry) {
 				break;
 			}
 			var m = line.match( /^([-A-Za-z0-9]+): (.*)$/ );
-			if(!m) {
-				lines.unshift(line);
-				break;
+			if(m) {
+				data[m[1]] = m[2];
 			}
-			data[m[1]] = m[2];
+			else {
+				W("bogus header line: "+line);
+			}
 		}
 		data["content"] = lines.join("\n");
 
